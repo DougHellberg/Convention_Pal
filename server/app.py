@@ -9,7 +9,7 @@ from flask_restful import Resource
 # Local imports
 from config import app, db, api
 # Add your model imports
-from models import db, Inventory
+from models import db, Inventory, User, Convention
 
 # Views go here!
 
@@ -35,6 +35,43 @@ class InventoryResource(Resource):
             except:
                 return make_response({"error" : ["Validation errors"]},404)
 api.add_resource(InventoryResource,"/inventory")
+
+class UserList(Resource):
+    def get(self):
+        user_list =[user.to_dict() for user in db.session.query(User).all()]
+        return make_response(user_list,200)
+    def post(self):
+            try:
+                new_user = User(
+                    username = request.json["username"],
+                    password = request.json["password"],
+                    name = request.json["name"]
+                )
+                db.session.add(new_user)
+                db.session.commit()
+
+                return make_response(new_user.to_dict(),201)
+            except:
+                return make_response({"error" : ["Validation errors"]},404)
+api.add_resource(UserList,"/user")
+
+class ConventionList(Resource):
+    def get(self):
+        convention_list=[convention.to_dict() for convention in db.session.query(Convention).all()]
+        return make_response(convention_list,200)
+    def post(self):
+        try:
+            new_convention = Convention(
+                name = request.json["name"],
+                num_of_days = request.json["num_of_days"],
+                table_cost = request.json["table_cost"]
+            )
+            db.session.add(new_convention)
+            db.session.commit()
+            return make_response(new_convention.to_dict(),201)
+        except:
+            return make_response({"error" : ["Validation errors"]},404)
+api.add_resource(ConventionList,"/convention")
 
 
 if __name__ == '__main__':
