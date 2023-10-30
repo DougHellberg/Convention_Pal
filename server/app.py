@@ -73,6 +73,40 @@ class ConventionList(Resource):
             return make_response({"error" : ["Validation errors"]},404)
 api.add_resource(ConventionList,"/convention")
 
+class InventoryById(Resource):
+    def get(self,id):
+        try:
+            inventory = Inventory.query.filter_by(id=id).first()
+            return make_response(inventory.to_dict(),200)
+        except:
+            return make_response({"error" : "Inventory by Id error"})
+    def delete(self, id):
+        try:
+            inventory = Inventory.query.filter_by(id = id).first()
+
+            db.session.delete(inventory)
+            db.session.commit()
+
+            return make_response({}, 202)
+        except:
+            return make_response({"error" : "Inventory delete error"}, 404)
+    def patch(self, id):
+        try:
+            inventory = Inventory.query.filter_by(id = id).one_or_none()
+
+            request_json = request.get_json()
+
+            for key in request_json:
+                setattr(inventory, key, request_json[key])
+
+            db.session.add(inventory)
+            db.session.commit()
+
+            return make_response(inventory.to_dict(), 200)
+        except:
+            return make_response({"erorr" : "Inventory patch error"}, 404)
+api.add_resource(InventoryById,"/inventory/<int:id>")
+
 
 if __name__ == '__main__':
     app.run(port=5555, debug=True)
