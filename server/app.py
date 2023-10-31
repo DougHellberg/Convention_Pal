@@ -26,7 +26,8 @@ class InventoryResource(Resource):
                 new_inventory = Inventory(
                     name = request.json["name"],
                     price = request.json["price"],
-                    quantity = request.json["quantity"]
+                    quantity = request.json["quantity"],
+                    inv_image = request.json["inv_image"]
                 )
                 db.session.add(new_inventory)
                 db.session.commit()

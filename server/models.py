@@ -11,6 +11,7 @@ class Inventory(db.Model, SerializerMixin):
     name = db.Column(db.String)
     price = db.Column(db.Integer)
     quantity = db.Column(db.Integer)
+    inv_image = db.Column(db.String)
 
     #Add relationships
     sales = db.relationship("Sale", backref="inventory", cascade="all,delete")

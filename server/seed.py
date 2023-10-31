@@ -13,7 +13,7 @@ fake = Faker()
 with app.app_context():
     inventorys = []
     for n in range(5):
-        inventory = Inventory(name=fake.first_name(), price=randint(1, 50), quantity=randint(0, 50))
+        inventory = Inventory(name=fake.first_name(), price=randint(1, 50), quantity=randint(0, 50),inv_image =fake.image((640,480)))
         inventorys.append(inventory)
 
     users = []
