@@ -13,7 +13,7 @@ fake = Faker()
 with app.app_context():
     inventorys = []
     for n in range(5):
-        inventory = Inventory(name=fake.first_name(), price=randint(1, 50), quantity=randint(0, 50),inv_image =fake.image((640,480)))
+        inventory = Inventory(name=fake.first_name(), price=randint(1, 50), quantity=randint(0, 50))
         inventorys.append(inventory)
 
     users = []
@@ -31,9 +31,7 @@ with app.app_context():
     User.query.delete()
     Convention.query.delete()
     print("Seeding Inventory...")
-    db.session.add_all(inventorys)  # Use add_all to add the list of Inventory objects
-    db.session.add_all(users)
-    db.session.add_all(conventions)
-    db.session.commit()
+    
+    #db.session.commit()
 
     print("Done Seeding!")

@@ -2,19 +2,24 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.orm import validates
+from werkzeug.security import generate_password_hash, check_password_hash
 from config import db
 
 class Inventory(db.Model, SerializerMixin):
     __tablename__ = 'Inventory'
 
     id = db.Column(db.Integer, primary_key = True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     name = db.Column(db.String)
     price = db.Column(db.Integer)
     quantity = db.Column(db.Integer)
-    inv_image = db.Column(db.String)
+    
 
     #Add relationships
     sales = db.relationship("Sale", backref="inventory", cascade="all,delete")
+
+    #Serialize rules
+    serialize_rules=("-sales.inventory",)
 
     #Adding Validations
     @validates('name')
@@ -30,7 +35,7 @@ class Inventory(db.Model, SerializerMixin):
         return price
     
     @validates('quantity')
-    def validates_price(self,key,quantity):
+    def validates_quantity(self,key,quantity):
         if not 0 <= quantity <=50:
             raise ValueError("Quantity cant be less then 0 or more then 50!")
         return quantity
@@ -42,16 +47,32 @@ class User(db.Model,SerializerMixin):
     username = db.Column(db.String)
     password = db.Column(db.String)
     name = db.Column(db.String)
+    password_hash = db.Column(db.String)
 
     sales = db.relationship("Sale", backref="user", cascade="all,delete")
     
+    #Serialize rules
+    serialize_rules=("-sales.user",)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def is_active(self):
+        return True
+    
+    def get_id(self):
+        return str(self.id)
 
     #Adding validations
-    @validates('name','username','password')
-    def validates_name(self,key,text):
-        if not text or len(text)<1:
-            raise ValueError("Name, Username and password must fit criteria!")
-        return text
+    @validates('password')
+    def validate_password(self, key, password):
+        if not password or len(password) < 8:
+            raise ValueError("Password must be at least 8 characters long.")
+        return password
+    
 
 class Convention(db.Model, SerializerMixin):
     __tablename__ = 'conventions'
@@ -63,6 +84,9 @@ class Convention(db.Model, SerializerMixin):
     table_cost = db.Column(db.Integer)
 
     sales = db.relationship("Sale", backref="convention", cascade="all,delete")
+
+    #Serialize rules
+    serialize_rules=("-sales.convention",)
 
     #Adding validations
     @validates('name')
