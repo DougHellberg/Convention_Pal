@@ -1,0 +1,81 @@
+.App {
+    min-height: 100vh;
+    text-align: center;
+    background-color: #C1C8E4; 
+}
+.main-header {
+    background-color: #84CEEB; 
+    color: #ffffff; 
+    padding: 1rem; 
+
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+}
+
+.brand-and-nav {
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.brand {
+    font-weight: bold;
+text-align: left;
+font-size: 24px; 
+font-family: 'Helvetica', 'Arial', sans-serif; 
+}
+
+.vertical-divider {
+    background-color: #ffffff; 
+    width: 2px;
+    align-self: stretch; 
+    margin-left: 5px;
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    
+}
+nav a {
+    color: white;                
+    text-decoration: none;       
+    margin: 0 15px;              
+    padding: 5px 0;             
+    display: inline-block;
+    font-size: 20px; 
+    font-family: 'Helvetica', 'Arial', sans-serif;      
+    transition: font-size 0.3s ease; 
+}
+
+nav a:visited {
+    color: white;                
+}
+
+nav a:hover,
+nav a:focus,
+nav a:active {
+    color: #5680E9;              
+    text-decoration: none;       
+    font-size: 22px; 
+}
+ul {
+    list-style: none;
+    padding: 0;
+    display: flex;        
+    flex-wrap: wrap;      
+    gap: 10px;            
+}
+
+.item {
+    border: 1px solid #060505;
+    padding: 10px;
+    box-sizing: border-box; 
+}
+@media (min-width: 600px) {
+    ul > li:first-child {
+    margin-left: 20px;
+    }
+}
+.item-actions {
+    margin-top: 5px; /* Add some space between the item details and the buttons */
+}

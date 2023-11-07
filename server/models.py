@@ -1,6 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_serializer import SerializerMixin
 from sqlalchemy.ext.associationproxy import association_proxy
+from flask_login import UserMixin
 from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import db
@@ -14,12 +15,13 @@ class Inventory(db.Model, SerializerMixin):
     price = db.Column(db.Integer)
     quantity = db.Column(db.Integer)
     
+    
 
     #Add relationships
-    sales = db.relationship("Sale", backref="inventory", cascade="all,delete")
+    #sales = db.relationship("Sale", backref="inventory_sales", cascade="all,delete")
 
     #Serialize rules
-    serialize_rules=("-sales.inventory",)
+    #serialize_rules=("-sales.inventory",)
 
     #Adding Validations
     @validates('name')
@@ -30,7 +32,7 @@ class Inventory(db.Model, SerializerMixin):
     
     @validates('price')
     def validates_price(self,key,price):
-        if not 1 < price <50:
+        if price <1 or price >50:
             raise ValueError("Must contain a price between 1 and 50!")
         return price
     
@@ -40,7 +42,7 @@ class Inventory(db.Model, SerializerMixin):
             raise ValueError("Quantity cant be less then 0 or more then 50!")
         return quantity
 
-class User(db.Model,SerializerMixin):
+class User(db.Model,SerializerMixin, UserMixin):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key = True)
@@ -50,6 +52,8 @@ class User(db.Model,SerializerMixin):
     password_hash = db.Column(db.String)
 
     sales = db.relationship("Sale", backref="user", cascade="all,delete")
+
+    inventory_names = association_proxy('sales', 'inventory_name')
     
     #Serialize rules
     serialize_rules=("-sales.user",)
@@ -83,10 +87,10 @@ class Convention(db.Model, SerializerMixin):
     num_of_days = db.Column(db.Integer)
     table_cost = db.Column(db.Integer)
 
-    sales = db.relationship("Sale", backref="convention", cascade="all,delete")
+    
 
     #Serialize rules
-    serialize_rules=("-sales.convention",)
+    
 
     #Adding validations
     @validates('name')
@@ -108,7 +112,7 @@ class Convention(db.Model, SerializerMixin):
         return tableCost 
     
 
-class Sale(db.Model, SerializerMixin):
+class Sale(db.Model, SerializerMixin, ):
     __tablename__ = 'sales'
 
     #Establishing columns
@@ -118,9 +122,15 @@ class Sale(db.Model, SerializerMixin):
     #Add relationships
     inventory_id = db.Column(db.Integer,db.ForeignKey('Inventory.id'))
     user_id = db.Column(db.Integer,db.ForeignKey('users.id'))
-    convention_id = db.Column(db.Integer,db.ForeignKey('conventions.id'))
-
     
+
+    serialize_rules = ('-inventory', '-user')
+
+    #relationships
+    inventory = db.relationship("Inventory", backref="sale_inventory", overlaps="inventory_sales,sales")
+    
+    #association proxy
+    inventory_name = association_proxy('inventory','name')
 
     #Adding validations
     @validates('name')

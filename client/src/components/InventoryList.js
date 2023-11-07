@@ -1,186 +1,270 @@
-import React, { useState, useEffect, Fragment } from 'react';
-
+import React, { useState, useEffect, Fragment, useRef } from 'react'
+import { useUserSession } from './UserSessionContext'
+import { Link } from 'react-router-dom'
+import axios from './axios-config'
 function InventoryList() {
-    const [inventoryItems, setInventoryItems] = useState([]);
-    const [showAddForm, setShowAddForm] = useState(false);
-    const [newItem, setNewItem] = useState({ name: '', price: 0, quantity: 0 });
-    const [editItemKey, setEditItemKey] = useState(null);
-    const [editedPrice, setEditedPrice] = useState(0);
-    const [editedQuantity, setEditedQuantity] = useState(0);
-
+    const { userSession } = useUserSession()
+    const userRef = useRef(userSession)
+    const [inventoryItems, setInventoryItems] = useState([])
+    const [showAddForm, setShowAddForm] = useState(false)
+    const [newItem, setNewItem] = useState({ name: '', price: 0, quantity: 0 })
+    const [editItem, setEditItem] = useState(null)
+    const [isEdit, setisEdit]=useState(false)
+    const [message,setMessage] = useState(" ")
 
     useEffect(() => {
-        const apiUrl = '/inventory';
-        fetch(apiUrl)
+        userRef.current = userSession
+    }, [userSession])
+
+    console.log(userSession)
+
+    useEffect(() => {
+        if (userSession) {
+            const apiUrl = `/inventory/user/${userSession.user_id}`
+    
+            fetch(apiUrl, {
+                credentials: 'include'  
+            })
             .then((response) => {
                 if (!response.ok) {
-                    throw new Error(`Network response was not ok: ${response.status}`);
+                    throw new Error(`Network response was not ok: ${response.status}`)
                 }
-                return response.json();
+                return response.json()
             })
             .then((data) => {
-                setInventoryItems(data);
+                setInventoryItems(data)
             })
             .catch((error) => {
-                console.error('Error fetching inventory data:', error);
+                console.error('Error fetching inventory data:', error)
             });
-    }, []);
+        }
+    }, [userSession]);
+    useEffect(() => {
+        if (userSession) {
+            setNewItem({ ...newItem, user_id: userSession.user_id })
+        }
+    }, [userSession]);
 
     const handleAddClick = () => {
-        setShowAddForm(!showAddForm);
-        if (showAddForm) {
-            setNewItem({ name: '', price: 0, quantity: 0 });
+        setShowAddForm(!showAddForm)
+        setEditItem(null)
+        setisEdit(null)
+        if (userRef.current) { 
+            setNewItem({ ...newItem, user_id: userRef.current.user_id })
         }
-        
     };
 
     const handleCancelClick = () => {
-        setShowAddForm(false);
+        setShowAddForm(false)
+        setEditItem(null);
+        setNewItem({ name: '', price: 0, quantity: 0 })
     };
 
-    const handleInputChange = (e,item) => {
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setNewItem({...newItem, [name]: value})
-        
-        console.log(newItem)
-        
-};
-    
+        setNewItem({ ...newItem, [name]: value })
+    };
 
     const handleDeleteItem = (itemKey) => {
         fetch(`/inventory/${itemKey}`, {
+            credentials: 'include',
             method: 'DELETE',
         })
             .then((response) => {
                 if (response.ok) {
-                    
-                    fetch('/inventory')
-                        .then((response) => {
-                            if (response.ok) {
-                                return response.json();
-                            }
-                            throw new Error(`Network response was not ok: ${response.status}`);
-                        })
-                        .then((data) => {
-                            setInventoryItems(data);
-                        })
-                        .catch((error) => {
-                            console.error('Error fetching inventory data:', error);
-                        });
+                    setInventoryItems(inventoryItems.filter((item) => item.id !== itemKey))
                 } else {
-                    console.error(`Error deleting item: ${response.status}`);
+                    console.error(`Error deleting item: ${response.status}`)
                 }
             })
             .catch((error) => {
-                console.error('Error deleting item:', error);
+                console.error('Error deleting item:', error)
             });
     };
 
-    const handleEditItem = (itemKey) => {
-        setEditItemKey(itemKey);
-        const itemToEdit = inventoryItems.find((item) => item.id === itemKey);
-        setEditedPrice(itemToEdit.price);
-        setEditedQuantity(itemToEdit.quantity);
+    const handleEditItem = (item) => {
+        setisEdit(true)
+        setEditItem(item)
+        setNewItem({ ...item })
+        setShowAddForm(true)
     };
-
-
-    const handleCancelEdit = () => {
-        setEditItemKey(null);
-        if (editItemKey !== null) {
-            
-            const itemToEdit = inventoryItems.find((item) => item.id === editItemKey);
-            setEditedPrice(itemToEdit.price);
-            setEditedQuantity(itemToEdit.quantity);
-    };
-    }
-    const handleUpdateItem = (item) => {
-        const apiUrl = `/inventory/${item.id}`;
-        const updatedFields = {
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-    };
-
-    fetch(apiUrl, {
-        method: 'PATCH',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updatedFields),
-    })
+    const handleSellItem = (item) => {
+        const updatedQuantity = item.quantity-1
+    
+        fetch(`/inventory/${item.id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({
+                quantity: updatedQuantity,
+            }),
+        })
         .then((response) => {
-            if (response.ok) {
-                setEditItemKey(null);
-            } else {
-                console.error(`Error updating item: ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`)
             }
+            return response.json()
+        })
+        .then((updatedItem) => {
+            
+            setInventoryItems(inventoryItems.map((item) =>
+                item.id === updatedItem.id ? updatedItem : item
+            ));
+    
+            
+            fetch('/sales', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    item_id: item.id,
+                    user_id: userSession.user_id,
+                    price: item.price,
+                    
+                }),
+            })
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`)
+                }
+                return response.json();
+            })
+            .catch((error) => {
+                console.error('Error creating sale:', error)
+            });
         })
         .catch((error) => {
-            console.error('Error updating item:', error);
+            console.error('Error selling item:', error)
         });
     };
 
-    const handleAddItem = () => {
-        fetch('/inventory', {
-            method: "POST",
+    const handleUpdateItem = () => {
+        setisEdit(false)
+        const apiUrl = `/inventory/${editItem.id}`;
+        const updatedFields = {
+            name: newItem.name,
+            price: newItem.price,
+            quantity: newItem.quantity,
+            user_id: editItem.user_id,
+        };
+
+        fetch(apiUrl, {
+            method: 'PATCH',
             headers: {
-                "Content-Type": "application/json",
+                'Content-Type': 'application/json',
             },
-            body: JSON.stringify(newItem),
+            credentials: 'include',
+            body: JSON.stringify(updatedFields),
         })
-            .then((response) => response.json())
-            .then((data) => {
-                setInventoryItems([...inventoryItems,data]);
-                setNewItem({ name: '', price: 0, quantity: 0 });
-                setShowAddForm(false);
+            .then((response) => {
+                if (response.ok) {
+                    setMessage('Update item successful')
+                    setEditItem(null);
+                    setShowAddForm(false);
+                    setInventoryItems(
+                        inventoryItems.map((item) =>
+                            item.id === editItem.id ? { ...item, ...updatedFields } : item
+                        )
+                    );
+                } else {
+                    console.error(`Error updating item: ${response.status}`)
+                    setMessage('Update item failed')
+                }
             })
             .catch((error) => {
-                console.error('Error adding item:', error);
+                console.error('Error updating item:', error)
+                setMessage('Update item failed')
             });
-    
     };
+
+    const handleAddItem = () => {
+        const payload = {
+            ...newItem,
+            user_id: parseInt(userSession.id, 10) 
+        };
+    
+        fetch('/inventory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(payload),
+        })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`)
+            }
+            setMessage('Create item successful')
+            return response.json()
+        })
+        .then((data) => {
+            setInventoryItems([...inventoryItems, data])
+            setNewItem({ name: '', price: 0, quantity: 0 })
+            setShowAddForm(false)
+        })
+        .catch((error) => {
+            console.error('Error adding item:', error)
+            setMessage('Create item failed')
+        });
+    };
+    
 
     return (
         <div>
+            {userSession && (
+                <div>
+                    <p>Welcome!</p>
+                </div>
+            )}
             <h1>Inventory List</h1>
             {inventoryItems.length > 0 && (
                 <Fragment>
                     <ul style={{ listStyle: 'none' }}>
                         {inventoryItems.map((item) => (
-                            <li key={item.key} style={{ marginBottom: '10px' }}>
-                                {editItemKey === item.id ? (
+                            <li key={item.id} className='item' style={{ marginBottom: '10px' }}>
+                                {isEdit && editItem && editItem.id === item.id ? (
                                     <div>
                                         <input
                                             type="text"
                                             name="name"
                                             value={newItem.name}
                                             placeholder="Name"
-                                            onChange={(e) => handleInputChange(e, item)}
+                                            onChange={handleInputChange}
                                         />
                                         <input
                                             type="number"
                                             name="price"
                                             value={newItem.price}
                                             placeholder="Price"
-                                            onChange={(e) => handleInputChange(e, item)}
+                                            onChange={handleInputChange}
                                         />
                                         <input
                                             type="number"
                                             name="quantity"
                                             value={newItem.quantity}
                                             placeholder="Stock left"
-                                            onChange={(e) => handleInputChange(e, item)}
+                                            onChange={handleInputChange}
                                         />
-                                        <button onClick={() => handleUpdateItem(item)}>Update</button>
-                                        <button onClick={handleCancelEdit}>Cancel</button>
+                                        <button onClick={handleUpdateItem}>Update</button>
+                                        <button onClick={handleCancelClick}>Cancel</button>
                                     </div>
                                 ) : (
                                     <Fragment>
+                                        <div className = "item-details">
                                         Item name: {item.name}<br />
                                         Price: {item.price}<br />
-                                        Stock left: {item.quantity}
+                                        Stock left: {item.quantity}<br />
+                                        </div>
+                                        <div className = "item-actions">
                                         <button onClick={() => handleDeleteItem(item.id)}>Delete</button>
-                                        <button onClick={() => handleEditItem(item.id)}>Edit</button>
+                                        <button onClick={() => handleEditItem(item)}>Edit</button>
+                                        <button onClick={() => handleSellItem(item)}>Sell</button>
+                                        </div>
                                     </Fragment>
                                 )}
                             </li>
@@ -188,12 +272,12 @@ function InventoryList() {
                     </ul>
                 </Fragment>
             )}
-
-            <button onClick={handleAddClick}>Add Item</button>
-
-            {showAddForm && (
+        <button onClick={handleAddClick}>Add Item</button>
+        <Link to="/total-sales">View Total Sales</Link>
+        
+    {showAddForm && !editItem && userSession && (
                 <div>
-                    <h2>Add New Item</h2>
+                    <h2>{editItem ? 'Edit Item' : 'Add New Item'}</h2>
                     <input
                         type="text"
                         name="name"
@@ -215,8 +299,11 @@ function InventoryList() {
                         placeholder="Stock left"
                         onChange={handleInputChange}
                     />
-                    <button onClick={handleAddItem}>Add</button>
+                    <button onClick={editItem ? handleUpdateItem : handleAddItem}>
+                        {editItem ? 'Update' : 'Add'}
+                    </button>
                     <button onClick={handleCancelClick}>Cancel</button>
+                    {message && <p>{message}</p>}
                 </div>
             )}
         </div>

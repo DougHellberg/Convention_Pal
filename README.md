@@ -20,6 +20,7 @@
 
 
  # Stretch Goals
+ - Personal Inventories 
  - Total profits (Minus Table cost and inventory cost)
 
  # Entity Relationship Diagram

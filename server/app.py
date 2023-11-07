@@ -5,39 +5,58 @@
 # Remote library imports
 from flask import Flask,request, make_response, abort, session, jsonify
 from flask_restful import Resource
-from flask_login import LoginManager, login_user
+from flask_login import LoginManager, login_user, current_user, login_required
 from werkzeug.security import generate_password_hash, check_password_hash
 # Local imports
 from config import app, db, api
 # Add your model imports
-from models import db, Inventory, User, Convention
+from models import db, Inventory, User, Convention, Sale
 app.secret_key = 'mfqCNPUsPQ'
+
 
 # Views go here!
 login_manager = LoginManager(app)
 login_manager.login_view = "login" 
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id)) 
+
+@app.route('/protected')
+@login_required
+def protected():
+    return 'Protected Area'
+
 @app.route('/')
 def index():
     return '<h1>Project Server</h1>'
+
 class InventoryResource(Resource):
+        method_decorators = [login_required]
         def get(self):
+            if not current_user.is_authenticated:
+                return {'message': 'User not logged in'}, 401
             inventory_list = [inventory.to_dict() for inventory in db.session.query(Inventory).all()]
             return make_response(inventory_list,200)
         
         def post(self):
+            app.logger.debug('Attempting to add inventory for user: %s', current_user.username)
             try:
+                
+                user_id = current_user.get_id()
+
                 new_inventory = Inventory(
-                    name = request.json["name"],
-                    price = int(request.json["price"]),
-                    quantity = int(request.json["quantity"])
+                    name=request.json["name"],
+                    price=int(request.json["price"]),
+                    quantity=int(request.json["quantity"]),
+                    user_id=int(user_id)  
                 )
                 db.session.add(new_inventory)
                 db.session.commit()
-
-                return make_response(new_inventory.to_dict(),201)
-            except:
-                return make_response({"error" : ["Validation errors"]},400)
+                return make_response(new_inventory.to_dict(), 201)
+            except Exception as e:
+                app.logger.error('Failed to add new inventory item: %s', str(e))
+                return make_response({"error": "An error occurred"}, 400)
 api.add_resource(InventoryResource,"/inventory")
 
 class UserList(Resource):
@@ -55,7 +74,7 @@ class UserList(Resource):
                 username=request.json["username"],
                 name=request.json["name"]
             )
-            # Set the password hash
+            
             new_user.set_password(request.json["password"])
 
             db.session.add(new_user)
@@ -102,10 +121,14 @@ api.add_resource(ConventionById,"/convention/<int:id>")
 class InventoryById(Resource):
     def get(self,id):
         try:
-            inventory = Inventory.query.filter_by(id=id).first()
-            return make_response(inventory.to_dict(),200)
+            inventory = Inventory.query.filter_by(user_id=id).all()
+            return make_response([item.to_dict() for item in inventory],200)
         except:
             return make_response({"error" : "Inventory by Id error"})
+    
+api.add_resource(InventoryById,"/inventory/user/<int:id>")
+
+class ItemById(Resource):
     def delete(self, id):
         try:
             inventory = Inventory.query.filter_by(id = id).first()
@@ -124,15 +147,17 @@ class InventoryById(Resource):
             request_json = request.get_json()
 
             for key in request_json:
-                setattr(inventory, key, request_json[key])
-
+                if key == 'quantity' or key == 'price':
+                    setattr(inventory, key, int(request_json[key]))
+                else:
+                    setattr(inventory, key, request_json[key])
             db.session.add(inventory)
             db.session.commit()
 
             return make_response(inventory.to_dict(), 200)
         except:
-            return make_response({"erorr" : "Inventory patch error"}, 404)
-api.add_resource(InventoryById,"/inventory/<int:id>")
+            return make_response({"error" : "Inventory patch error"}, 404)
+api.add_resource(ItemById,"/inventory/<int:id>")
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -141,15 +166,53 @@ def login():
     password = data.get('password')
 
     user = User.query.filter_by(username=username).first()
-    
-    if user:
-        if user.check_password(password):
-            login_user(user)
-            return make_response({'message': 'Login successful'}, 200)
-        else:
-            return make_response({'message': 'Incorrect password'}, 401)
+
+    if user and user.check_password(password):
+        login_user(user, remember=True)  
+        session['user_id'] = user.id
+        return jsonify({'message': 'Login successful', 'user_id': user.id}), 200
+    elif user:
+        app.logger.debug('Incorrect password attempt for user: %s', username)
+        return make_response({'message': 'Incorrect password'}, 401)
     else:
+        app.logger.debug('No user found with username: %s', username)
         return make_response({'message': 'User not found'}, 404)
+
+    
+@app.route('/check_session')
+def check_session():
+    print('Checking session:', dict(session))  
+    user_id = session.get('user_id')
+    if user_id:
+        return jsonify({'message': f'User ID in session: {user_id}'}), 200
+    else:
+        return jsonify({'message': 'No user ID in session'}), 401
+    
+
+@app.route('/sales', methods=['POST'])
+def create_sale():
+    data = request.get_json()
+    item_id = data.get('item_id')
+    user_id = data.get('user_id')
+    price = data.get('price')
+    new_sale = Sale(inventory_id=item_id, user_id=user_id, total_sales=price)
+    db.session.add(new_sale)
+    db.session.commit()
+
+    return jsonify({'message': 'Sale created', 'sale': new_sale.to_dict()}), 201
+
+@app.route('/total-sales/<int:user_id>', methods=['GET'])
+def get_total_sales(user_id):
+    total_sales = db.session.query(db.func.sum(Sale.total_sales)).filter(Sale.user_id == user_id).scalar()
+    return jsonify({'total_sales': total_sales})
+
+@app.route('/users/<int:user_id>/inventory_names', methods=['GET'])
+def get_user_inventory_names(user_id):
+    user = User.query.get(user_id)
+    if user is None:
+        return jsonify({'error': 'User not found'}), 404
+    inventory_names = [name for name in user.inventory_names]
+    return jsonify({'inventory_names': inventory_names})
 
 
 
