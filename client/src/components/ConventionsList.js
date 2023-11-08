@@ -72,26 +72,28 @@ function ConventionsList() {
 
     return (
         <div>
-            
+            <h1 className="inventory-heading">Convention List</h1>
             {conventionItems.length > 0 && (
-                <ul style={{ listStyle: 'none' }}>
+                <ul className="inventory-list" style={{ listStyle: 'none' }}>
                     {conventionItems.map((item) => (
-                        <li key={item.id} style={{ marginBottom: '10px' }}>
+                        <li key={item.id} className='item' style={{ marginBottom: '10px' }}>
                             Convention name: {item.name}<br />
                             Days con is running: {item.num_of_days}<br />
-                            Cost of table: {item.table_cost}
+                            Cost of table: {item.table_cost}<br/>
+                            <div className = "delete-btn">
                             <button onClick={() => handleDeleteConvention(item.id)}>Delete</button>
+                            </div>
                         </li>
                     ))}
                 </ul>
             )}
-            <h1>Convention List</h1>
+            
             
             <button onClick={handleAddClick}>Add Convention</button>
             
             {showAddForm && (
                 <div>
-                    <h2>Add New Convention</h2>
+                    <h2 className="inventory-heading">Add New Convention</h2><br/>
                     <input
                         type="text"
                         name="name"

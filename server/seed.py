@@ -16,10 +16,7 @@ with app.app_context():
         inventory = Inventory(name=fake.first_name(), price=randint(1, 50), quantity=randint(0, 50))
         inventorys.append(inventory)
 
-    users = []
-    for n in range(5):
-        user = User(username=fake.name(),password=fake.country(),name=fake.name())
-        users.append(user)
+    
     
     conventions = []
     for n in range(5):
@@ -27,11 +24,21 @@ with app.app_context():
         conventions.append(convention)
 
     print("Clearing out table!")
-    Inventory.query.delete()
-    User.query.delete()
-    Convention.query.delete()
+    
     print("Seeding Inventory...")
     
-    #db.session.commit()
+
+# Create a new inventory item
+    
+
+    # Create a new sale
+    new_sale = Sale(total_sales=1, inventory_id=new_inventory.id, user_id=new_user.id)
+    db.session.add(new_sale)
+    db.session.commit()
+
+    # Now, you should be able to access the name of the inventory item sold by the user through the association proxy
+    print(new_user.inventory_names)
+        
+        
 
     print("Done Seeding!")
