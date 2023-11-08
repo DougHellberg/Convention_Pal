@@ -32,7 +32,7 @@ function TotalSales() {
 
     const formattedTotalSales = totalSales.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
     return (
-        <div>
+        <div className="tot_sale">
             Total Sales: {formattedTotalSales}
         </div>
     );

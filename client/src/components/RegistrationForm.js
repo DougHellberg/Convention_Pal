@@ -31,6 +31,8 @@ function handleSubmit(e) {
 }
 
 return (
+    <div>
+        <h1 className="inventory-heading">Registration</h1>
     <form onSubmit={handleSubmit}>
     <input
         type="text"
@@ -55,6 +57,7 @@ return (
     />
     <button type="submit">Register</button>
     </form>
+    </div>
 );
 }
 

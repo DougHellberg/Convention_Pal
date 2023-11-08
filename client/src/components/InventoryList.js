@@ -216,15 +216,10 @@ function InventoryList() {
 
     return (
         <div>
-            {userSession && (
-                <div>
-                    <p>Welcome!</p>
-                </div>
-            )}
-            <h1>Inventory List</h1>
+            <h1 className="inventory-heading">Inventory</h1>
             {inventoryItems.length > 0 && (
                 <Fragment>
-                    <ul style={{ listStyle: 'none' }}>
+                    <ul className="inventory-list" style={{ listStyle: 'none' }}>
                         {inventoryItems.map((item) => (
                             <li key={item.id} className='item' style={{ marginBottom: '10px' }}>
                                 {isEdit && editItem && editItem.id === item.id ? (
@@ -261,9 +256,15 @@ function InventoryList() {
                                         Stock left: {item.quantity}<br />
                                         </div>
                                         <div className = "item-actions">
+                                        <div className = "delete-btn">
                                         <button onClick={() => handleDeleteItem(item.id)}>Delete</button>
+                                        </div>
+                                        <div className = "edit-btn">
                                         <button onClick={() => handleEditItem(item)}>Edit</button>
+                                        </div>
+                                        <div className = "sell-btn">
                                         <button onClick={() => handleSellItem(item)}>Sell</button>
+                                        </div>
                                         </div>
                                     </Fragment>
                                 )}
@@ -272,12 +273,12 @@ function InventoryList() {
                     </ul>
                 </Fragment>
             )}
-        <button onClick={handleAddClick}>Add Item</button>
-        <Link to="/total-sales">View Total Sales</Link>
+        <button className="add-btn" onClick={handleAddClick}>Add Item</button><br/>
+        <Link to="/total-sales" className="sales-link">View Total Sales</Link>
         
     {showAddForm && !editItem && userSession && (
                 <div>
-                    <h2>{editItem ? 'Edit Item' : 'Add New Item'}</h2>
+                    <h2 className="heading-style">{editItem ? 'Edit Item' : 'Add New Item'}</h2><br/>
                     <input
                         type="text"
                         name="name"
@@ -302,8 +303,8 @@ function InventoryList() {
                     <button onClick={editItem ? handleUpdateItem : handleAddItem}>
                         {editItem ? 'Update' : 'Add'}
                     </button>
-                    <button onClick={handleCancelClick}>Cancel</button>
-                    {message && <p>{message}</p>}
+                    <button onClick={handleCancelClick} className="cancel-button">Cancel</button>
+                    {message && <p className="message">{message}</p>}
                 </div>
             )}
         </div>
